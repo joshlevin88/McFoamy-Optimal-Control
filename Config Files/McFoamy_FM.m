@@ -5,10 +5,13 @@ rho = 1.225;
 Vel = [u v w];
 B_rate = [p q r];
 
-%% AIRCRAFT GEOMETRY
+CtrlDef = [-LAilDef, LAilDef, ElevDef, RudDef];
+
+%% MCFOAMY GEOMETRY
 
 %        x     y    z
-CG = [-238.58, 0, 5.89]; %measured from propeller plane
+% CG = [-238.58, 0, 5.89]; %measured from propeller plane using CAD
+CG = [-270, 0, 5.89]; % CG_x measured roughly by hand (picking plane up)
 
 PropGeom = [12, 254];
 
@@ -26,7 +29,7 @@ WingSec3 = [59.29, 13198.25, 222.69,  99.23, -215.43, 151.14, 0];
 WingSec4 = [62.58, 12974.40, 207.42,  96.36, -212.18, 212.01, 0];
 WingSec5 = [62.58, 11992.21, 191.74,  93.41, -208.85, 274.55, 0];
 WingSec6 = [63.25, 11122.51, 175.97,  90.44, -205.50, 337.42, 0];
-WingSec7 = [61.90,  9914.07, 160.28,  87.49, -202.26, 400.21, 0];
+WingSec7 = [61.90,   9913.9, 160.28,  87.49, -202.26, 400.21, 0];
 
 % Tail Sections 
 %            Span    Area     Chord FlapChord   x     y     z
@@ -48,14 +51,104 @@ BodySec2 = [35.87, 23018.14, 641.71,   0,   -205.09,  0,  17.94];
 BodySec3 = [37.26, 23910.11, 641.71,   0,   -205.09,  0, -18.63];
 BodySec4 = [37.26, 23910.11, 641.71,   0,   -205.09,  0, -55.89];
 
-Geom = [WingGeom; TailGeom; RudGeom; BodyGeom;...
-        WingSec1; WingSec2; WingSec3; WingSec4; WingSec5; WingSec6; WingSec7;...
-        TailSec1; TailSec2; TailSec3; TailSec4;...
-        RudSec1; RudSec2; RudSec3; RudSec4;...
-        BodySec1; BodySec2; BodySec3; BodySec4]';
+Geom = [WingGeom; 
+        TailGeom; 
+        RudGeom; 
+        BodyGeom;
+        WingSec1; 
+        WingSec2; 
+        WingSec3; 
+        WingSec4; 
+        WingSec5; 
+        WingSec6; 
+        WingSec7;
+        TailSec1; 
+        TailSec2; 
+        TailSec3;
+        RudSec1;
+        RudSec2; 
+        RudSec3; 
+        RudSec4;
+        BodySec1; 
+        BodySec2; 
+        BodySec3; 
+        BodySec4]';
+    
+% Geometric properties of components
 
+% AIRCRAFT CG
+% Measured w.r.t the nose (from propeller plane)
+xCG = CG(1)*1e-3;
+yCG = CG(2)*1e-3;
+zCG = CG(3)*1e-3;
 
-CtrlDef = [-LAilDef, LAilDef, ElevDef, RudDef];
+% THRUSTER
+% Thrust is assumed to act in x direction only
+xp = 0 - xCG;
+yp = 0 - yCG;
+zp = 0 - zCG;
+
+% WING GEOMETRY
+Nw = Geom(1,1);
+Cw0 = Geom(2,1)*1e-3;
+Cwe = Geom(3,1)*1e-3;
+Bw = Geom(4,1)*1e-3;
+AR_w = (Bw)/(0.5*(Cw0 + Cwe));  % Aspect ratio
+
+bw = Geom(1,5:Nw+4)*1e-3;
+Aw = Geom(2,5:Nw+4)*1e-6;
+Cw = Geom(3,5:Nw+4)*1e-3;
+Cwf = Geom(4,5:Nw+4)*1e-3;
+xw = Geom(5,5:Nw+4)*1e-3- xCG;
+yws = Geom(6,5:Nw+4)*1e-3 - yCG;
+ywp = -yws;
+zw = Geom(7,5:Nw+4)*1e-3 - zCG;
+
+% TAIL GEOMETRY
+Nt = Geom(1,2);
+Ct0 = Geom(2,2)*1e-3;
+Cte = Geom(3,2)*1e-3;
+Bt = Geom(4,2)*1e-3;
+AR_t = (Bt)/(0.5*(Ct0 + Cte));  % Aspect ratio
+
+bt = Geom(1,Nw+5:Nw+Nt+4)*1e-3;
+At = Geom(2,Nw+5:Nw+Nt+4)*1e-6;
+Ct = Geom(3,Nw+5:Nw+Nt+4)*1e-3;
+Ctf = Geom(4,Nw+5:Nw+Nt+4)*1e-3;
+xt = Geom(5,Nw+5:Nw+Nt+4)*1e-3 - xCG;
+yts = Geom(6,Nw+5:Nw+Nt+4)*1e-3 - yCG;
+ytp = -yts;
+zt = Geom(7,Nw+5:Nw+Nt+4)*1e-3 - zCG;
+ 
+% RUDDER GEOMETRY
+Nr = Geom(1,3);
+Cr0 = Geom(2,3)*1e-3;
+Cre = Geom(3,3)*1e-3;
+Br = Geom(4,3)*1e-3;
+AR_r = Br/(0.5*(Cr0 + Cre));  % Aspect ratio
+
+br = Geom(1,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3;
+Ar = Geom(2,Nw+Nt+5:Nw+Nt+Nr+4)*1e-6;
+Cr = Geom(3,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3;
+Crf = Geom(4,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3;
+xr = Geom(5,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3 - xCG;
+yr = Geom(6,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3 - yCG;
+zr = Geom(7,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3 - zCG;
+
+% BODY GEOMETRY
+NB = Geom(1,4);
+CB0 = Geom(2,4)*1e-3;
+CBe = Geom(3,4)*1e-3;
+BB = Geom(4,4)*1e-3;
+AR_B = BB/(0.5*(CB0 + CBe));  % Aspect ratio
+
+bB = Geom(1,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3;
+AB = Geom(2,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-6;
+CB = Geom(3,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3;
+CBf = Geom(4,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3;
+xB = Geom(5,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3 - xCG;
+yB = Geom(6,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3 - yCG;
+zB = Geom(7,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3 - zCG;
 
 %% THRUSTER MODEL
 
@@ -290,93 +383,11 @@ end
 V_wind = [0,0,0,0,0,0];
 
 %--------------------------------------------------------------------------
-%                Geometric properties of components
-%--------------------------------------------------------------------------
-% AIRCRAFT CG
-% Measured w.r.t the nose (from propeller plane)
-xCG = CG(1)*1e-3;
-yCG = CG(2)*1e-3;
-zCG = CG(3)*1e-3;
-
-% THRUSTER
-% Thrust is assumed to act in x direction only
-xp = 0 - xCG;
-yp = 0 - yCG;
-zp = 0 - zCG;
-
-% WING GEOMETRY
-Nw = 7; %Geom(1,1);
-Cw0 = Geom(2,1)*1e-3;
-Cwe = Geom(3,1)*1e-3;
-Bw = Geom(4,1)*1e-3;
-AR_w = (Bw)/(0.5*(Cw0 + Cwe));  % Aspect ratio
-
-bw = Geom(1,5:Nw+4)*1e-3;
-Aw = Geom(2,5:Nw+4)*1e-6;
-Cw = Geom(3,5:Nw+4)*1e-3;
-Cwf = Geom(4,5:Nw+4)*1e-3;
-xw = Geom(5,5:Nw+4)*1e-3- xCG;
-yws = Geom(6,5:Nw+4)*1e-3 - yCG;
-ywp = -yws;
-zw = Geom(7,5:Nw+4)*1e-3 - zCG;
-
-% TAIL GEOMETRY
-Nt = 4; %Geom(1,2);
-Ct0 = Geom(2,2)*1e-3;
-Cte = Geom(3,2)*1e-3;
-Bt = Geom(4,2)*1e-3;
-AR_t = (Bt)/(0.5*(Ct0 + Cte));  % Aspect ratio
-
-bt = Geom(1,Nw+5:Nw+Nt+4)*1e-3;
-At = Geom(2,Nw+5:Nw+Nt+4)*1e-6;
-Ct = Geom(3,Nw+5:Nw+Nt+4)*1e-3;
-Ctf = Geom(4,Nw+5:Nw+Nt+4)*1e-3;
-xt = Geom(5,Nw+5:Nw+Nt+4)*1e-3 - xCG;
-yts = Geom(6,Nw+5:Nw+Nt+4)*1e-3 - yCG;
-ytp = -yts;
-zt = Geom(7,Nw+5:Nw+Nt+4)*1e-3 - zCG;
- 
-% RUDDER GEOMETRY
-Nr = 4; %Geom(1,3);
-Cr0 = Geom(2,3)*1e-3;
-Cre = Geom(3,3)*1e-3;
-Br = Geom(4,3)*1e-3;
-AR_r = Br/(0.5*(Cr0 + Cre));  % Aspect ratio
-
-br = Geom(1,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3;
-Ar = Geom(2,Nw+Nt+5:Nw+Nt+Nr+4)*1e-6;
-Cr = Geom(3,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3;
-Crf = Geom(4,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3;
-xr = Geom(5,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3 - xCG;
-yr = Geom(6,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3 - yCG;
-zr = Geom(7,Nw+Nt+5:Nw+Nt+Nr+4)*1e-3 - zCG;
-
-% BODY GEOMETRY
-NB = 4; %Geom(1,4);
-CB0 = Geom(2,4)*1e-3;
-CBe = Geom(3,4)*1e-3;
-BB = Geom(4,4)*1e-3;
-AR_B = BB/(0.5*(CB0 + CBe));  % Aspect ratio
-
-bB = Geom(1,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3;
-AB = Geom(2,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-6;
-CB = Geom(3,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3;
-CBf = Geom(4,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3;
-xB = Geom(5,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3 - xCG;
-yB = Geom(6,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3 - yCG;
-zB = Geom(7,Nw+Nt+Nr+5:Nw+Nt+Nr+NB+4)*1e-3 - zCG;
-
-%--------------------------------------------------------------------------
 %                       Aerodynamic Constants
 %--------------------------------------------------------------------------
 Cd0 = 0.02;
 Cd90 = 1.98;
 alp0 = 0;
-% alpStallP = 10*pi/180;
-% alpStallN = -10*pi/180;
-% HighAlpStart = 22*pi/180;
-% HighAlpEnd = 158*pi/180;
-% StallMdl = 'FullStall';
 
 %--------------------------------------------------------------------------
 %                       Wind disturbances
@@ -552,8 +563,8 @@ Fx_B = 0.5*rho*bB.*CB.*vB_xy.^2.*(CL_B.*sin(a_B) - CD_B.*cos(a_B));
 % y-direction forces
 Fy_ws = [0,0,0,0,0,0,0]; % INCLUDE FRICTION DRAG
 Fy_wp = [0,0,0,0,0,0,0]; % INCLUDE FRICTION DRAG
-Fy_ts = [0,0,0,0]; % INCLUDE FRICTION DRAG
-Fy_tp = [0,0,0,0]; % INCLUDE FRICTION DRAG
+Fy_ts = [0,0,0]; % INCLUDE FRICTION DRAG
+Fy_tp = [0,0,0]; % INCLUDE FRICTION DRAG
 
 Fy_r = 0.5*rho*br.*Cr.*vr_xy.^2.*(-CL_r.*cos(a_r) - CD_r.*sin(a_r));
 Fy_B = 0.5*rho*bB.*CB.*vB_xy.^2.*(-CL_B.*cos(a_B) - CD_B.*sin(a_B));
